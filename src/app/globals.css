@@ -3,25 +3,143 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #FFF0F5;
+  --foreground: #3D2035;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  scroll-behavior: smooth;
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+@layer base {
+  * {
+    @apply border-lumiere-warm;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  .transition-smooth-slow {
+    transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  .hover-lift {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 40px rgba(212,83,126,0.12);
+  }
+
+  .gradient-blush {
+    background: linear-gradient(135deg, #FFF0F5 0%, #F4C0D1 100%);
+  }
+
+  .gradient-rose {
+    background: linear-gradient(135deg, #D4537E 0%, #B83A6A 100%);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  .animate-float-slow {
+    animation: float 10s ease-in-out infinite;
+  }
+
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(5deg); }
+  }
+}
+
+/* User Custom Overrides - Estilo Coquette */
+
+/* 1. Header/navbar */
+header {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #F2C4D8 !important;
+}
+
+/* 2. & 3. Botones */
+button.bg-lumiere-rose, button.bg-lumiere-charcoal, button.border-lumiere-charcoal {
+  border-radius: 50px !important;
+}
+
+button.border-lumiere-charcoal {
+  border-color: #D4537E !important;
+  color: #D4537E !important;
+}
+button.border-lumiere-charcoal:hover {
+  background-color: transparent !important;
+  color: #B83A6A !important;
+  border-color: #B83A6A !important;
+}
+
+/* 4. Footer */
+footer {
+  background-color: #FFF0F5 !important;
+  color: #3D2035 !important;
+}
+footer * {
+  border-color: #F2C4D8 !important;
+}
+
+/* 5. Cards de producto */
+.bg-lumiere-light.rounded-3xl, .bg-lumiere-light.rounded-2xl {
+  border: 1px solid #F2C4D8 !important;
+}
+
+/* 6. Inputs (buscador, selects) */
+input, select, textarea {
+  border-color: #F2C4D8 !important;
+}
+input:focus, select:focus, textarea:focus {
+  outline-color: #D4537E !important;
+  border-color: #D4537E !important;
+  box-shadow: 0 0 0 2px rgba(212,83,126,0.2) !important;
+}
+
+/* 7. Badges de categoría */
+.bg-lumiere-gold {
+  background-color: #F4C0D1 !important;
+  color: #72243E !important;
+  border-radius: 20px !important;
+}
+
+/* 8. Precios */
+.text-lumiere-rose {
+  font-weight: 600 !important;
+}
+
+/* 9. Nombres y Títulos */
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: var(--font-playfair), Georgia, serif !important;
+}
+
+/* 10. Carrito ícono y corazón */
+header svg {
+  color: #D4537E !important;
 }

@@ -1,4 +1,20 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {};
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
+  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
+  webpack: (config) => {
+    config.externals.push({
+      canvas: "canvas",
+    });
+    return config;
+  },
+};
 
 export default nextConfig;
