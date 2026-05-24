@@ -292,7 +292,7 @@ export default function ProductReviews({ productId, onStatsUpdate }: ProductRevi
                 </div>
               </div>
               <p className="text-lumiere-charcoal/80 leading-relaxed italic pr-4">
-                "{review.comment}"
+                &quot;{review.comment}&quot;
               </p>
             </motion.div>
           ))

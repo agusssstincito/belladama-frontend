@@ -148,7 +148,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                 ) : hasSearched && query.trim() !== "" ? (
                   <div className="py-10 text-center">
                     <p className="text-lumiere-muted">
-                      No encontramos productos para tu búsqueda "<strong>{query}</strong>".
+                      No encontramos productos para tu búsqueda &quot;<strong>{query}</strong>&quot;.
                     </p>
                   </div>
                 ) : null}
