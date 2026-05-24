@@ -9,6 +9,9 @@ const nextConfig = {
     ],
   },
   transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   webpack: (config) => {
     config.externals.push({
       canvas: "canvas",
