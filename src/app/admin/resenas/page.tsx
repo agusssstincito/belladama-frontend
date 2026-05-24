@@ -164,7 +164,7 @@ export default function AdminResenasPage() {
                     {testimonial.isActive ? "Activo" : "Inactivo"}
                   </div>
                 </div>
-                <p className="text-sm text-[#3D2035]/70 italic line-clamp-4">"{testimonial.comment}"</p>
+                <p className="text-sm text-[#3D2035]/70 italic line-clamp-4">&quot;{testimonial.comment}&quot;</p>
               </div>
 
               <div className="mt-6 flex items-center justify-end gap-2 pt-4 border-t border-[#D4537E]/5 opacity-0 group-hover:opacity-100 transition-opacity">

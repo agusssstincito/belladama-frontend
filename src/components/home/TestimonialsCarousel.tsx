@@ -101,7 +101,7 @@ export function TestimonialsCarousel() {
                     </div>
                   </div>
 
-                  <p className="mt-4 text-lumiere-muted italic">"{testimonial.comment}"</p>
+                  <p className="mt-4 text-lumiere-muted italic">&quot;{testimonial.comment}&quot;</p>
                 </div>
               </motion.div>
             ))}
