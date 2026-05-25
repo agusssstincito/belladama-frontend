@@ -1,30 +1,13 @@
-/** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "images.unsplash.com",
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
       },
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-
     ],
-  },
-  transpilePackages: ["three", "@react-three/fiber", "@react-three/drei"],
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  webpack: (config) => {
-    config.externals.push({
-      canvas: "canvas",
-    });
-    return config;
   },
 };
 
