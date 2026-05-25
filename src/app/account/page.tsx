@@ -352,7 +352,8 @@ export default function AccountPage() {
                   <AnimatePresence>
                     {orders.map((order, index) => (
                       <motion.div
-                        key={order._id || (order as any).id}
+                        key={(order as any)._id || order.id}
+
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
@@ -383,10 +384,8 @@ export default function AccountPage() {
                             <p className="text-3xl font-heading text-lumiere-charcoal">
                               $ {order.pricing.total.toLocaleString('es-AR')}
                             </p>
-                            <Link href={`/account/orders/${order._id || (order as any).id}`} className="text-sm text-[#D4537E] font-medium hover:underline inline-flex items-center gap-1 mt-2">
-                              Detalles del pedido <ChevronRight className="w-4 h-4" />
-                            </Link>
                           </div>
+
 
                         </div>
                       </motion.div>
