@@ -215,10 +215,11 @@ export default function AccountPage() {
                    Mi Wishlist
                  </h2>
                  {wishlistProducts.length > 0 && (
-                   <Link href="/categories" className="text-sm font-medium text-[#D4537E] hover:underline flex items-center gap-1">
+                   <Link href="/products" className="text-sm font-medium text-[#D4537E] hover:underline flex items-center gap-1">
                      Ver más <ArrowRight className="w-4 h-4" />
                    </Link>
                  )}
+
                </div>
 
                <div className="bg-white/40 backdrop-blur-sm rounded-[2.5rem] p-8 border border-white/60 shadow-sm">
@@ -255,11 +256,12 @@ export default function AccountPage() {
                      </div>
                      <p className="text-xl font-heading text-lumiere-charcoal mb-2">Tu wishlist está vacía</p>
                      <p className="text-lumiere-charcoal/60 mb-8 font-body italic">¡Agregá productos desde el catálogo!</p>
-                     <Link href="/categories">
+                     <Link href="/products">
                        <Button className="bg-[#D4537E] hover:bg-[#c0466e] text-white px-10 py-6 rounded-full shadow-lg hover:shadow-xl transition-all text-lg tracking-wide">
                          Explorar catálogo
                        </Button>
                      </Link>
+
                    </div>
                  )}
                </div>
@@ -350,7 +352,7 @@ export default function AccountPage() {
                   <AnimatePresence>
                     {orders.map((order, index) => (
                       <motion.div
-                        key={order.id}
+                        key={order._id || (order as any).id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
@@ -381,10 +383,11 @@ export default function AccountPage() {
                             <p className="text-3xl font-heading text-lumiere-charcoal">
                               $ {order.pricing.total.toLocaleString('es-AR')}
                             </p>
-                            <Link href={`/account/orders/${order.id}`} className="text-sm text-[#D4537E] font-medium hover:underline inline-flex items-center gap-1 mt-2">
+                            <Link href={`/account/orders/${order._id || (order as any).id}`} className="text-sm text-[#D4537E] font-medium hover:underline inline-flex items-center gap-1 mt-2">
                               Detalles del pedido <ChevronRight className="w-4 h-4" />
                             </Link>
                           </div>
+
                         </div>
                       </motion.div>
                     ))}
