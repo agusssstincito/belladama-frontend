@@ -30,7 +30,7 @@ interface Coupon {
 }
 
 export default function OfertasPage() {
-  const [activeTab, setActiveTab] = useState<'announcements' | 'discounts' | 'coupons' | 'category-discounts' | 'store-discounts'>('announcements');
+  const [activeTab, setActiveTab] = useState<'announcements' | 'discounts' | 'coupons' | 'category-discounts' | 'store-discounts' | 'quantity-discounts'>('announcements');
   const { showToast } = useToast();
 
   // Announcement states
@@ -70,6 +70,20 @@ export default function OfertasPage() {
     isActive: false,
     isPermanent: true,
     expiresAt: ""
+  });
+  
+  // Quantity Discount states
+  const [qtyDiscounts, setQtyDiscounts] = useState<any[]>([]);
+  const [isQtyLoading, setIsQtyLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [newQtyDiscount, setNewQtyDiscount] = useState({
+    scope: "product" as "product" | "category" | "store",
+    productId: "",
+    categoryId: "",
+    minQuantity: 2,
+    discountType: "percentage" as "percentage" | "fixed",
+    value: 0
   });
 
   const fetchAnnouncements = async () => {
@@ -130,6 +144,17 @@ export default function OfertasPage() {
     }
   };
 
+  const fetchQtyDiscounts = async () => {
+    try {
+      const response = await api.get("/quantity-discounts");
+      if (response.data.success) {
+        setQtyDiscounts(response.data.data);
+      }
+    } catch (error) {
+      showToast("Error al cargar descuentos por cantidad", "error");
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'announcements') {
       fetchAnnouncements();
@@ -140,6 +165,10 @@ export default function OfertasPage() {
     } else if (activeTab === 'category-discounts' || activeTab === 'store-discounts') {
       fetchCategories();
       fetchStoreDiscounts();
+    } else if (activeTab === 'quantity-discounts') {
+      fetchCategories();
+      fetchQtyDiscounts();
+      fetchProducts(""); // Preload some products
     }
   }, [activeTab]);
 
@@ -318,6 +347,56 @@ export default function OfertasPage() {
     }
   };
 
+  // Quantity Discount Handlers
+  const handleQtyDiscountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsQtyLoading(true);
+    try {
+      const data = {
+        ...newQtyDiscount,
+        productId: newQtyDiscount.scope === 'product' ? selectedProduct?._id || selectedProduct?.id : undefined,
+      };
+      await api.post("/quantity-discounts", data);
+      showToast("Descuento por cantidad creado", "success");
+      setNewQtyDiscount({
+        scope: "product",
+        productId: "",
+        categoryId: "",
+        minQuantity: 2,
+        discountType: "percentage",
+        value: 0
+      });
+      setSelectedProduct(null);
+      setProductSearch("");
+      fetchQtyDiscounts();
+    } catch (error: any) {
+      showToast(error.response?.data?.message || "Error al crear descuento", "error");
+    } finally {
+      setIsQtyLoading(false);
+    }
+  };
+
+  const handleDeleteQtyDiscount = async (id: string) => {
+    if (!confirm("¿Estás seguro de eliminar este descuento?")) return;
+    try {
+      await api.delete(`/quantity-discounts/${id}`);
+      showToast("Descuento eliminado", "success");
+      fetchQtyDiscounts();
+    } catch (error) {
+      showToast("Error al eliminar descuento", "error");
+    }
+  };
+
+  const handleToggleQtyDiscount = async (id: string, currentStatus: boolean) => {
+    try {
+      await api.put(`/quantity-discounts/${id}`, { isActive: !currentStatus });
+      fetchQtyDiscounts();
+      showToast(!currentStatus ? "Descuento activado" : "Descuento desactivado", "success");
+    } catch (error: any) {
+      showToast(error.response?.data?.message || "Error al cambiar estado", "error");
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto pb-20">
       <div className="flex items-center gap-3 mb-8">
@@ -375,6 +454,16 @@ export default function OfertasPage() {
         >
           <Tag className="h-4 w-4" />
           Toda la tienda
+        </button>
+        <button 
+          onClick={() => setActiveTab('quantity-discounts')}
+          className={cn(
+            "px-6 py-3 border-b-2 font-medium transition-all flex items-center gap-2 whitespace-nowrap",
+            activeTab === 'quantity-discounts' ? "border-[#D4537E] text-[#D4537E]" : "border-transparent text-[#3D2035]/50 hover:text-[#3D2035]"
+          )}
+        >
+          <Plus className="h-4 w-4" />
+          Por Cantidad
         </button>
       </div>
 
@@ -820,7 +909,7 @@ export default function OfertasPage() {
               </table>
             </div>
           </motion.div>
-        ) : (
+        ) : activeTab === 'store-discounts' ? (
           <motion.div
             key="store-disc-tab"
             initial={{ opacity: 0, scale: 0.95 }}
@@ -964,6 +1053,205 @@ export default function OfertasPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="qty-disc-tab"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="space-y-8"
+          >
+            {/* Quantity Discount Form */}
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-soft border border-[#D4537E]/10">
+              <h2 className="text-xl font-heading font-bold text-[#3D2035] mb-6 flex items-center gap-2">
+                <Plus className="h-5 w-5" /> Nuevo Descuento por Cantidad
+              </h2>
+              <form onSubmit={handleQtyDiscountSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-[#3D2035]/70 mb-2">Alcance</label>
+                  <select
+                    value={newQtyDiscount.scope}
+                    onChange={(e) => {
+                      setNewQtyDiscount({ ...newQtyDiscount, scope: e.target.value as any, productId: "", categoryId: "" });
+                      setSelectedProduct(null);
+                      setProductSearch("");
+                    }}
+                    className="w-full rounded-2xl border-2 border-[#FFF0F5] bg-[#FFF9FB] px-4 py-3 focus:border-[#D4537E] focus:outline-none"
+                  >
+                    <option value="product">Producto específico</option>
+                    <option value="category">Categoría</option>
+                    <option value="store">Toda la tienda</option>
+                  </select>
+                </div>
+
+                {newQtyDiscount.scope === 'product' && (
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-[#3D2035]/70 mb-2">Producto</label>
+                    <div className="relative">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#3D2035]/30" />
+                      <input
+                        type="text"
+                        value={selectedProduct ? selectedProduct.name : productSearch}
+                        onChange={(e) => {
+                          setProductSearch(e.target.value);
+                          setSelectedProduct(null);
+                          fetchProducts(e.target.value);
+                        }}
+                        placeholder="Buscar producto..."
+                        className="w-full pl-10 pr-4 py-3 rounded-2xl border-2 border-[#FFF0F5] bg-[#FFF9FB] focus:border-[#D4537E] focus:outline-none"
+                        required={!selectedProduct}
+                      />
+                    </div>
+                    {productSearch && !selectedProduct && products.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-[#FFF0F5] rounded-2xl shadow-xl max-h-60 overflow-y-auto">
+                        {products.map((p) => (
+                          <button
+                            key={p._id || p.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedProduct(p);
+                              setProductSearch("");
+                            }}
+                            className="w-full text-left px-4 py-3 hover:bg-[#FFF0F5] text-sm text-[#3D2035] transition-colors"
+                          >
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {selectedProduct && (
+                      <button 
+                         type="button"
+                         onClick={() => setSelectedProduct(null)}
+                         className="absolute right-3 top-[42px] text-[#D4537E] hover:text-[#D4537E]/80"
+                      >
+                         <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {newQtyDiscount.scope === 'category' && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#3D2035]/70 mb-2">Categoría</label>
+                    <select
+                      value={newQtyDiscount.categoryId}
+                      onChange={(e) => setNewQtyDiscount({ ...newQtyDiscount, categoryId: e.target.value })}
+                      className="w-full rounded-2xl border-2 border-[#FFF0F5] bg-[#FFF9FB] px-4 py-3 focus:border-[#D4537E] focus:outline-none"
+                      required
+                    >
+                      <option value="">Seleccionar categoría</option>
+                      {categories.map((cat) => (
+                        <option key={cat._id} value={cat._id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-[#3D2035]/70 mb-2">Cantidad mínima</label>
+                  <input
+                    type="number"
+                    value={newQtyDiscount.minQuantity}
+                    onChange={(e) => setNewQtyDiscount({ ...newQtyDiscount, minQuantity: Number(e.target.value) })}
+                    className="w-full rounded-2xl border-2 border-[#FFF0F5] bg-[#FFF9FB] px-4 py-3 focus:border-[#D4537E] focus:outline-none"
+                    min="2"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#3D2035]/70 mb-2">Tipo</label>
+                    <select
+                      value={newQtyDiscount.discountType}
+                      onChange={(e) => setNewQtyDiscount({ ...newQtyDiscount, discountType: e.target.value as any })}
+                      className="w-full rounded-2xl border-2 border-[#FFF0F5] bg-[#FFF9FB] px-4 py-3 focus:border-[#D4537E] focus:outline-none"
+                    >
+                      <option value="percentage">Porcentaje (%)</option>
+                      <option value="fixed">Monto fijo ($)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#3D2035]/70 mb-2">Valor</label>
+                    <input
+                      type="number"
+                      value={newQtyDiscount.value}
+                      onChange={(e) => setNewQtyDiscount({ ...newQtyDiscount, value: Number(e.target.value) })}
+                      className="w-full rounded-2xl border-2 border-[#FFF0F5] bg-[#FFF9FB] px-4 py-3 focus:border-[#D4537E] focus:outline-none"
+                      required
+                      min="0"
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2 pt-4">
+                  <Button type="submit" variant="primary" className="w-full rounded-2xl" disabled={isQtyLoading}>
+                    {isQtyLoading ? "Guardando..." : "Crear Descuento"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Quantity Discount List */}
+            <div className="bg-white rounded-[2.5rem] overflow-hidden border border-[#D4537E]/10 shadow-soft">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-[#FFF0F5]/50 text-[#3D2035]/60 text-xs font-heading font-bold uppercase tracking-wider">
+                      <th className="px-6 py-4">Alcance / Objetivo</th>
+                      <th className="px-6 py-4">Cant. Mínima</th>
+                      <th className="px-6 py-4">Descuento</th>
+                      <th className="px-6 py-4 text-right">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#FFF0F5]">
+                    {qtyDiscounts.map((disc) => (
+                      <tr key={disc._id} className={cn("hover:bg-[#FFF9FB] transition-colors", !disc.isActive && "opacity-50")}>
+                        <td className="px-6 py-4">
+                          <p className="font-bold text-[#3D2035]">
+                            {disc.scope === 'product' ? 'Producto' : disc.scope === 'category' ? 'Categoría' : 'Toda la tienda'}
+                          </p>
+                          <p className="text-[10px] text-[#3D2035]/60">
+                            {disc.scope === 'product' ? disc.productId?.name : disc.scope === 'category' ? disc.categoryId?.name : 'Global'}
+                          </p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-sm font-medium text-[#3D2035]">Llevando {disc.minQuantity} o más</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="px-3 py-1 bg-[#FFF0F5] text-[#D4537E] border border-[#D4537E]/20 rounded-full font-bold text-xs">
+                            {disc.discountType === 'percentage' ? `${disc.value}%` : formatPrice(disc.value)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleToggleQtyDiscount(disc._id, disc.isActive)}
+                              className={cn("p-2 rounded-xl border transition-colors", disc.isActive ? "bg-green-50 text-green-600 border-green-50" : "bg-gray-50 text-gray-400 border-gray-50")}
+                            >
+                              {disc.isActive ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4 rotate-45" />}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteQtyDiscount(disc._id)}
+                              className="p-2 rounded-xl bg-red-50 text-red-600 border border-red-50 hover:bg-red-100 transition-colors"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {qtyDiscounts.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-12 text-center text-[#3D2035]/50">No hay descuentos por cantidad creados.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </motion.div>
         )}
