@@ -27,6 +27,7 @@ interface CartState {
   applyCoupon: (coupon: AppliedCoupon) => void;
   removeCoupon: () => void;
   getCouponDiscount: () => number;
+  getQuantityDiscount: () => number;
   getFinalTotal: () => number;
 }
 
@@ -141,10 +142,17 @@ export const useCartStore = create<CartState>()(
         }
       },
 
+      getQuantityDiscount: () => {
+        const discountStore = useDiscountStore.getState();
+        const { totalDiscount } = discountStore.calculateQuantityDiscount(get().items);
+        return totalDiscount;
+      },
+
       getFinalTotal: () => {
         const subtotal = get().getTotalPrice();
-        const discount = get().getCouponDiscount();
-        return Math.max(0, subtotal - discount);
+        const qtyDiscount = get().getQuantityDiscount();
+        const couponDiscount = get().getCouponDiscount();
+        return Math.max(0, subtotal - qtyDiscount - couponDiscount);
       },
     }),
     { name: "lumiere-cart" }

@@ -13,10 +13,11 @@ interface OrderSummaryProps {
 }
 
 export default function OrderSummary({ items: propItems, subtotal, couponDiscount = 0, couponCode }: OrderSummaryProps) {
-  const { items: cartItems, getTotalPrice } = useCartStore()
+  const { items: cartItems, getTotalPrice, getQuantityDiscount } = useCartStore()
   const items = propItems || cartItems
   const effectiveSubtotal = propItems ? subtotal : getTotalPrice()
-  const total = Math.max(0, effectiveSubtotal - couponDiscount)
+  const qtyDiscount = propItems ? 0 : getQuantityDiscount() // We assume propItems means we're in a state where we pass subtotal explicitly
+  const total = Math.max(0, effectiveSubtotal - qtyDiscount - couponDiscount)
 
   return (
     <div className="bg-lumiere-warm rounded-3xl p-6 space-y-6">
@@ -63,6 +64,12 @@ export default function OrderSummary({ items: propItems, subtotal, couponDiscoun
           <span>Subtotal</span>
           <span>{formatPrice(effectiveSubtotal)}</span>
         </div>
+        {qtyDiscount > 0 && (
+          <div className="flex justify-between text-green-600 text-sm">
+            <span>Descuento por cantidad</span>
+            <span>−{formatPrice(qtyDiscount)}</span>
+          </div>
+        )}
         {couponDiscount > 0 && couponCode && (
           <div className="flex justify-between text-green-600 text-sm">
             <span>Cupón ({couponCode})</span>

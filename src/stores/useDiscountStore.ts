@@ -19,7 +19,18 @@ export interface StoreDiscount {
   expiresAt?: string;
 }
 
-interface AppliedDiscountInfo {
+export interface QuantityDiscount {
+  _id: string;
+  scope: 'product' | 'category' | 'store';
+  productId?: string | { _id: string; name: string; slug: string };
+  categoryId?: string | { _id: string; name: string; slug: string };
+  minQuantity: number;
+  discountType: 'percentage' | 'fixed';
+  value: number;
+  isActive: boolean;
+}
+
+export interface AppliedDiscountInfo {
   label: string;
   amount: number;
   expiresAt?: string;
@@ -27,6 +38,7 @@ interface AppliedDiscountInfo {
 
 interface DiscountState {
   activeDiscounts: StoreDiscount[];
+  quantityDiscounts: QuantityDiscount[];
   isLoading: boolean;
   fetchActiveDiscounts: () => Promise<void>;
   calculateDiscountedPrice: (product: any) => { 
@@ -38,19 +50,33 @@ interface DiscountState {
     discountLabel?: string;
     appliedDiscounts: AppliedDiscountInfo[];
   };
+  calculateQuantityDiscount: (items: any[]) => {
+    totalDiscount: number;
+    appliedDiscounts: { label: string; amount: number; discountId: string }[];
+    pendingDiscounts: { label: string; needed: number; discountId: string; target: string; value: number; type: string }[];
+  };
 }
 
 export const useDiscountStore = create<DiscountState>((set, get) => ({
   activeDiscounts: [],
+  quantityDiscounts: [],
   isLoading: false,
 
   fetchActiveDiscounts: async () => {
     set({ isLoading: true });
     try {
-      const response = await api.get("/store-discounts/active");
-      if (response.data.success) {
-        set({ activeDiscounts: response.data.data });
-      }
+      const [storeRes, qtyRes] = await Promise.all([
+        api.get("/store-discounts/active"),
+        api.get("/quantity-discounts/active")
+      ]);
+      
+      let storeDiscounts = [];
+      let quantityDiscounts = [];
+
+      if (storeRes.data.success) storeDiscounts = storeRes.data.data;
+      if (qtyRes.data.success) quantityDiscounts = qtyRes.data.data;
+
+      set({ activeDiscounts: storeDiscounts, quantityDiscounts });
     } catch (error) {
       console.error("Error fetching active discounts:", error);
     } finally {
@@ -72,7 +98,7 @@ export const useDiscountStore = create<DiscountState>((set, get) => ({
       appliedDiscounts.push({
         label: "Precio oferta",
         amount: originalPrice - product.salePrice,
-        expiresAt: product.saleEndsAt // Assuming product might have this already
+        expiresAt: product.saleEndsAt
       });
     }
 
@@ -127,5 +153,61 @@ export const useDiscountStore = create<DiscountState>((set, get) => ({
       discountLabel: "OFERTA",
       appliedDiscounts
     };
+  },
+
+  calculateQuantityDiscount: (items: any[]) => {
+    const { quantityDiscounts } = get();
+    const appliedDiscounts: { label: string; amount: number; discountId: string }[] = [];
+    const pendingDiscounts: { label: string; needed: number; discountId: string; target: string; value: number; type: string }[] = [];
+    let totalDiscount = 0;
+
+    quantityDiscounts.forEach(discount => {
+      let matchingItems = [];
+      let totalUnits = 0;
+      let targetName = "";
+
+      if (discount.scope === 'product') {
+        const prodId = typeof discount.productId === 'object' ? discount.productId?._id : discount.productId;
+        matchingItems = items.filter(item => (item.product.id || (item.product as any)._id) === prodId);
+        targetName = typeof discount.productId === 'object' ? (discount.productId as any).name : "producto";
+      } else if (discount.scope === 'category') {
+        const catId = typeof discount.categoryId === 'object' ? discount.categoryId?._id : discount.categoryId;
+        matchingItems = items.filter(item => (item.product.category?._id || item.product.category) === catId);
+        targetName = typeof discount.categoryId === 'object' ? (discount.categoryId as any).name : "categoría";
+      } else if (discount.scope === 'store') {
+        matchingItems = items;
+        targetName = "la tienda";
+      }
+
+      totalUnits = matchingItems.reduce((acc, item) => acc + item.quantity, 0);
+      const subtotalMatching = matchingItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+      if (totalUnits >= discount.minQuantity) {
+        let discountAmount = 0;
+        if (discount.discountType === 'percentage') {
+          discountAmount = (subtotalMatching * discount.value) / 100;
+        } else {
+          discountAmount = discount.value;
+        }
+        
+        totalDiscount += discountAmount;
+        appliedDiscounts.push({
+          label: `¡Descuento por cantidad aplicado! -${formatPrice(discountAmount)}`,
+          amount: discountAmount,
+          discountId: discount._id
+        });
+      } else if (totalUnits > 0) {
+        pendingDiscounts.push({
+          label: `🛍️ ¡Agregá ${discount.minQuantity - totalUnits} más de ${targetName} y obtenés ${discount.discountType === 'percentage' ? `${discount.value}%` : formatPrice(discount.value)} off!`,
+          needed: discount.minQuantity - totalUnits,
+          discountId: discount._id,
+          target: targetName,
+          value: discount.value,
+          type: discount.discountType
+        });
+      }
+    });
+
+    return { totalDiscount, appliedDiscounts, pendingDiscounts };
   }
 }));

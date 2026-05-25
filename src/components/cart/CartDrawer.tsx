@@ -6,6 +6,7 @@ import { X, Minus, Plus, Trash2, ShoppingBag, Check, Tag } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCartStore } from "@/stores/cartStore";
+import { useDiscountStore } from "@/stores/useDiscountStore";
 import { Button } from "@/components/ui/Button";
 import { formatPrice } from "@/lib/utils";
 import api from "@/lib/api";
@@ -18,6 +19,7 @@ export function CartDrawer() {
     updateQuantity, 
     removeItem, 
     getTotalPrice, 
+    getQuantityDiscount,
     appliedCoupon, 
     applyCoupon, 
     removeCoupon, 
@@ -25,21 +27,27 @@ export function CartDrawer() {
     getFinalTotal, 
     refreshPrices 
   } = useCartStore();
+  const { fetchActiveDiscounts, calculateQuantityDiscount } = useDiscountStore();
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
+  const [dismissedMessages, setDismissedMessages] = useState<string[]>([]);
 
   const subtotal = getTotalPrice();
+  const qtyDiscount = getQuantityDiscount();
   const couponDiscount = getCouponDiscount();
   const finalTotal = getFinalTotal();
   const isCouponValid = !appliedCoupon || !appliedCoupon.minCartTotal || subtotal >= appliedCoupon.minCartTotal;
 
-  // Refresh prices whenever the cart opens
+  const { appliedDiscounts, pendingDiscounts } = calculateQuantityDiscount(items);
+
+  // Refresh prices and discounts whenever the cart opens
   useEffect(() => {
     if (isOpen) {
       refreshPrices();
+      fetchActiveDiscounts();
     }
-  }, [isOpen, refreshPrices]);
+  }, [isOpen, refreshPrices, fetchActiveDiscounts]);
 
   const handleApplyCoupon = async () => {
     if (!couponInput.trim()) return;
@@ -205,6 +213,46 @@ export function CartDrawer() {
                   </AnimatePresence>
                 </div>
 
+                {/* Progressive Messages */}
+                {(appliedDiscounts.length > 0 || pendingDiscounts.length > 0) && (
+                  <div className="px-6 py-2 space-y-2">
+                    {appliedDiscounts.map((disc) => (
+                      <motion.div
+                        key={disc.discountId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center justify-between rounded-xl bg-green-50 p-2.5 border border-green-100"
+                      >
+                        <div className="flex items-center gap-2 text-green-700 text-xs font-medium">
+                          <Check className="h-3.5 w-3.5" />
+                          <span>{disc.label}</span>
+                        </div>
+                      </motion.div>
+                    ))}
+                    
+                    {pendingDiscounts
+                      .filter(disc => !dismissedMessages.includes(disc.discountId))
+                      .map((disc) => (
+                      <motion.div
+                        key={disc.discountId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="flex items-center justify-between rounded-xl bg-[#FFF0F5] p-2.5 border border-[#D4537E]/10"
+                      >
+                        <div className="flex items-center gap-2 text-[#D4537E] text-xs font-medium">
+                          <span>{disc.label}</span>
+                        </div>
+                        <button 
+                          onClick={() => setDismissedMessages([...dismissedMessages, disc.discountId])}
+                          className="text-[#D4537E]/60 hover:text-[#D4537E]"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
                 <div className="absolute bottom-0 left-0 right-0 border-t border-lumiere-warm bg-lumiere-light p-6">
                   {/* Coupon Section */}
                   {!appliedCoupon ? (
@@ -270,6 +318,12 @@ export function CartDrawer() {
                     <span>Subtotal</span>
                     <span>{formatPrice(subtotal)}</span>
                   </div>
+                  {qtyDiscount > 0 && (
+                    <div className="mb-1 flex items-center justify-between text-sm text-green-600">
+                      <span>Descuento por cantidad</span>
+                      <span>−{formatPrice(qtyDiscount)}</span>
+                    </div>
+                  )}
                   {appliedCoupon && isCouponValid && (
                     <div className="mb-1 flex items-center justify-between text-sm text-green-600">
                       <span>Descuento ({appliedCoupon.code})</span>

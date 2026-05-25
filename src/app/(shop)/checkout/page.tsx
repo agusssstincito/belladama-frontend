@@ -12,7 +12,7 @@ import type { CheckoutInput } from '@/lib/validations'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, getTotalPrice, getCouponDiscount, clearCart, appliedCoupon } = useCartStore()
+  const { items, getTotalPrice, getQuantityDiscount, getCouponDiscount, clearCart, appliedCoupon } = useCartStore()
   const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
@@ -25,8 +25,9 @@ export default function CheckoutPage() {
     setIsProcessing(true)
     try {
       const subtotal = getTotalPrice()
+      const qtyDiscount = getQuantityDiscount()
       const couponDiscount = getCouponDiscount()
-      const total = Math.max(0, subtotal - couponDiscount)
+      const total = Math.max(0, subtotal - qtyDiscount - couponDiscount)
 
       // 1. Save order to database
       await api.post('/orders', {
@@ -41,7 +42,7 @@ export default function CheckoutPage() {
           unitPrice: item.price,
           subtotal: item.price * item.quantity
         })),
-        pricing: { subtotal, shipping: 0, discount: couponDiscount, total },
+        pricing: { subtotal, shipping: 0, discount: couponDiscount + qtyDiscount, total },
         couponCode: appliedCoupon?.code || null,
       })
 
@@ -57,6 +58,10 @@ export default function CheckoutPage() {
         )
         .join('\n')
 
+      const qtyDiscountLine = qtyDiscount > 0 
+        ? `\n*Descuento por cantidad:* −$${qtyDiscount.toLocaleString('es-AR')}` 
+        : ''
+
       const couponLine = appliedCoupon 
         ? `\n*Cupón:* ${appliedCoupon.code} → −$${couponDiscount.toLocaleString('es-AR')}` 
         : ''
@@ -66,7 +71,7 @@ export default function CheckoutPage() {
 *Productos:*
 ${productLines}
 
-*Subtotal:* $${subtotal.toLocaleString('es-AR')}${couponLine}
+*Subtotal:* $${subtotal.toLocaleString('es-AR')}${qtyDiscountLine}${couponLine}
 *Total: $${total.toLocaleString('es-AR')}*
 
 *Cliente:* ${formData.name}
@@ -97,8 +102,9 @@ _El local se comunicará para coordinar la entrega._`
   }
 
   const subtotal = getTotalPrice()
+  const qtyDiscount = getQuantityDiscount()
   const couponDiscount = getCouponDiscount()
-  const total = Math.max(0, subtotal - couponDiscount)
+  const total = Math.max(0, subtotal - qtyDiscount - couponDiscount)
 
   return (
     <main className="min-h-screen bg-lumiere-cream">
