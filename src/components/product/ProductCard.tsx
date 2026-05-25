@@ -319,7 +319,9 @@ export function ProductCard({ product }: ProductCardProps) {
             </motion.div>
           )}
 
+          <div className="absolute inset-0 bg-gradient-to-t from-[#D4537E]/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
           <div className="absolute inset-0 bg-gradient-to-t from-lumiere-charcoal/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
         </div>
 
         <div className="mt-4 space-y-1" style={{ transform: "translateZ(30px)" }}>

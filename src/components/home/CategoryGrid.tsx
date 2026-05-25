@@ -91,7 +91,9 @@ export function CategoryGrid() {
                 </motion.div>
 
                 {/* Aesthetic Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-[#D4537E]/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
                 <div className="absolute inset-0 bg-gradient-to-t from-lumiere-charcoal/90 via-lumiere-charcoal/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
+
 
                 <motion.div
                   variants={{
