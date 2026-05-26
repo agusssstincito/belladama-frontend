@@ -192,16 +192,30 @@ export const useDiscountStore = create<DiscountState>((set, get) => ({
         }
         
         totalDiscount += discountAmount;
-        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : formatPrice(discount.value) + ' off';
+        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : `$${discount.value} off`;
+        let targetText = "";
+        if (discount.scope === 'store') targetText = "todo el carrito";
+        else if (discount.scope === 'category') targetText = targetName;
+        else targetText = targetName;
+        
         appliedDiscounts.push({
-          label: `✓ ${discountStr} aplicado en ${discount.scope === 'store' ? 'todo el carrito' : targetName}`,
+          label: `✓ ${discountStr} aplicado en ${targetText}`,
           amount: discountAmount,
           discountId: discount._id
         });
       } else if (totalUnits > 0) {
-        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : formatPrice(discount.value) + ' off';
+        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : `$${discount.value} off`;
+        let message = "";
+        if (discount.scope === 'store') {
+          message = `Agregá ${discount.minQuantity - totalUnits} productos más y obtenés ${discountStr} en todo`;
+        } else if (discount.scope === 'category') {
+          message = `Agregá ${discount.minQuantity - totalUnits} más de ${targetName} y obtenés ${discountStr}`;
+        } else {
+          message = `Agregá ${discount.minQuantity - totalUnits} más de ${targetName} y obtenés ${discountStr}`;
+        }
+        
         pendingDiscounts.push({
-          label: `Agregá ${discount.minQuantity - totalUnits} productos más ${discount.scope === 'store' ? '' : `de ${targetName} `}y obtenés ${discountStr}${discount.scope === 'store' ? ' en todo' : ''}`,
+          label: message,
           needed: discount.minQuantity - totalUnits,
           discountId: discount._id,
           target: targetName,
