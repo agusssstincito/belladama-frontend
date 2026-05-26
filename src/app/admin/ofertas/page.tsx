@@ -370,7 +370,12 @@ export default function OfertasPage() {
       setProductSearch("");
       fetchQtyDiscounts();
     } catch (error: any) {
-      showToast(error.response?.data?.message || "Error al crear descuento", "error");
+      const message = error.response?.data?.message || "";
+      if (message.includes("Ya existe un descuento activo")) {
+        showToast("Ya hay un descuento activo para este objetivo. Desactivá el anterior en la lista antes de crear uno nuevo.", "error");
+      } else {
+        showToast(message || "Error al crear descuento", "error");
+      }
     } finally {
       setIsQtyLoading(false);
     }
@@ -388,12 +393,22 @@ export default function OfertasPage() {
   };
 
   const handleToggleQtyDiscount = async (id: string, currentStatus: boolean) => {
+    // Optimistic update
+    const newStatus = !currentStatus;
+    setQtyDiscounts(prev => prev.map(d => d._id === id ? { ...d, isActive: newStatus } : d));
+
     try {
-      await api.put(`/quantity-discounts/${id}`, { isActive: !currentStatus });
-      fetchQtyDiscounts();
-      showToast(!currentStatus ? "Descuento activado" : "Descuento desactivado", "success");
+      await api.put(`/quantity-discounts/${id}`, { isActive: newStatus });
+      showToast(newStatus ? "Descuento activado" : "Descuento desactivado", "success");
     } catch (error: any) {
-      showToast(error.response?.data?.message || "Error al cambiar estado", "error");
+      // Revert on error
+      setQtyDiscounts(prev => prev.map(d => d._id === id ? { ...d, isActive: currentStatus } : d));
+      const message = error.response?.data?.message || "";
+      if (message.includes("Ya existe un descuento activo")) {
+        showToast("Ya hay un descuento activo para este objetivo. Desactivá el anterior en la lista antes de crear uno nuevo.", "error");
+      } else {
+        showToast(message || "Error al cambiar estado", "error");
+      }
     }
   };
 
