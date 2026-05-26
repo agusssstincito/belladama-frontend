@@ -50,10 +50,10 @@ interface DiscountState {
     discountLabel?: string;
     appliedDiscounts: AppliedDiscountInfo[];
   };
-  calculateQuantityDiscount: (items: any[]) => {
-    totalDiscount: number;
-    appliedDiscounts: { label: string; amount: number; discountId: string }[];
-    pendingDiscounts: { label: string; needed: number; discountId: string; target: string; value: number; type: string }[];
+  calculateQuantityDiscounts: (items: any[]) => {
+    total: number;
+    applied: { name: string; benefit: string; amount: number; rule: any }[];
+    pending: { name: string; benefit: string; current: number; needed: number; progress: number; rule: any }[];
   };
 }
 
@@ -156,76 +156,66 @@ export const useDiscountStore = create<DiscountState>((set, get) => ({
     };
   },
 
-  calculateQuantityDiscount: (items: any[]) => {
+  calculateQuantityDiscounts: (items: any[]) => {
     const { quantityDiscounts } = get();
-    const appliedDiscounts: { label: string; amount: number; discountId: string }[] = [];
-    const pendingDiscounts: { label: string; needed: number; discountId: string; target: string; value: number; type: string }[] = [];
-    let totalDiscount = 0;
+    const applied: { name: string; benefit: string; amount: number; rule: any }[] = [];
+    const pending: { name: string; benefit: string; current: number; needed: number; progress: number; rule: any }[] = [];
+    let total = 0;
 
-    quantityDiscounts.forEach(discount => {
+    quantityDiscounts.forEach(rule => {
       let matchingItems = [];
       let totalUnits = 0;
-      let targetName = "";
+      let targetName = rule.name || "";
 
-      if (discount.scope === 'product') {
-        const prodId = typeof discount.productId === 'object' ? discount.productId?._id : discount.productId;
+      if (rule.scope === 'product') {
+        const prodId = typeof rule.productId === 'object' ? rule.productId?._id : rule.productId;
         matchingItems = items.filter(item => (item.product.id || (item.product as any)._id) === prodId);
-        targetName = typeof discount.productId === 'object' ? (discount.productId as any).name : "producto";
-      } else if (discount.scope === 'category') {
-        const catId = typeof discount.categoryId === 'object' ? discount.categoryId?._id : discount.categoryId;
-        matchingItems = items.filter(item => (item.product.category?._id || item.product.category) === catId);
-        targetName = typeof discount.categoryId === 'object' ? (discount.categoryId as any).name : "categoría";
-      } else if (discount.scope === 'store') {
+        if (!targetName) targetName = typeof rule.productId === 'object' ? (rule.productId as any).name : "producto";
+      } else if (rule.scope === 'category') {
+        const catId = typeof rule.categoryId === 'object' ? rule.categoryId?._id : rule.categoryId;
+        matchingItems = items.filter(item => {
+          const itemCatId = item.product.category?._id || item.product.category;
+          return itemCatId === catId;
+        });
+        if (!targetName) targetName = typeof rule.categoryId === 'object' ? (rule.categoryId as any).name : "categoría";
+      } else if (rule.scope === 'store') {
         matchingItems = items;
-        targetName = "la tienda";
+        if (!targetName) targetName = "productos en total";
       }
 
       totalUnits = matchingItems.reduce((acc, item) => acc + item.quantity, 0);
       const subtotalMatching = matchingItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-      if (totalUnits >= discount.minQuantity) {
+      const benefitStr = rule.discountType === 'percentage' ? `${rule.value}% off` : `$${rule.value} off`;
+      const ruleName = rule.name || `${rule.minQuantity}+ ${targetName}`;
+
+      if (totalUnits >= rule.minQuantity) {
         let discountAmount = 0;
-        if (discount.discountType === 'percentage') {
-          discountAmount = (subtotalMatching * discount.value) / 100;
+        if (rule.discountType === 'percentage') {
+          discountAmount = (subtotalMatching * rule.value) / 100;
         } else {
-          // Fixed amount ($): apply ONCE to the affected subtotal, capped by the subtotal itself
-          discountAmount = Math.min(discount.value, subtotalMatching);
+          discountAmount = Math.min(rule.value, subtotalMatching);
         }
         
-        totalDiscount += discountAmount;
-        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : `$${discount.value} off`;
-        let targetText = "";
-        if (discount.scope === 'store') targetText = "todo el carrito";
-        else if (discount.scope === 'category') targetText = targetName;
-        else targetText = targetName;
-        
-        appliedDiscounts.push({
-          label: `✓ ${discountStr} aplicado en ${targetText}`,
+        applied.push({
+          name: ruleName,
+          benefit: benefitStr,
           amount: discountAmount,
-          discountId: discount._id
+          rule: rule
         });
-      } else if (totalUnits > 0) {
-        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : `$${discount.value} off`;
-        let message = "";
-        if (discount.scope === 'store') {
-          message = `Agregá ${discount.minQuantity - totalUnits} productos más y obtenés ${discountStr} en todo`;
-        } else if (discount.scope === 'category') {
-          message = `Agregá ${discount.minQuantity - totalUnits} más de ${targetName} y obtenés ${discountStr}`;
-        } else {
-          message = `Agregá ${discount.minQuantity - totalUnits} más de ${targetName} y obtenés ${discountStr}`;
-        }
-        
-        pendingDiscounts.push({
-          label: message,
-          needed: discount.minQuantity - totalUnits,
-          discountId: discount._id,
-          target: targetName,
-          value: discount.value,
-          type: discount.discountType
+        total += discountAmount;
+      } else {
+        pending.push({
+          name: targetName,
+          benefit: benefitStr,
+          current: totalUnits,
+          needed: rule.minQuantity,
+          progress: Math.min((totalUnits / rule.minQuantity) * 100, 100),
+          rule: rule
         });
       }
     });
 
-    return { totalDiscount, appliedDiscounts, pendingDiscounts };
+    return { applied, pending, total };
   }
 }));

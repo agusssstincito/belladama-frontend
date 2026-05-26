@@ -22,12 +22,13 @@ interface ProductCardProps {
 
 export const ProductCard = memo(({ product }: ProductCardProps) => {
   const addItem = useCartStore((state) => state.addItem);
+  const cartItems = useCartStore((state) => state.items);
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { user } = useAuthStore();
   const { showToast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
-  const { calculateDiscountedPrice } = useDiscountStore();
+  const { activeDiscounts, quantityDiscounts, calculateDiscountedPrice, calculateQuantityDiscounts } = useDiscountStore();
   const { price: discountedPrice, hasDiscount, originalPrice, discountLabel } = calculateDiscountedPrice(product);
 
   const productId = product._id || product.id;
@@ -60,9 +61,7 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
   }, [images.length]);
 
-  const goToImage = (e: React.MouseEvent, index: number) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const goToImage = (index: number) => {
     setCurrentIndex(index);
   };
 
@@ -141,20 +140,14 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
       return;
     }
 
-    // Extraer talle de product.sizes o product.variants
     let firstSize = 'U';
     if (product.sizes && product.sizes.length > 0) {
       firstSize = typeof product.sizes[0] === 'string' ? product.sizes[0] : product.sizes[0].name;
-    } else if ((product as any).variants && (product as any).variants.length > 0) {
-      firstSize = (product as any).variants[0].size;
     }
 
-    // Extraer color de product.colors o product.variants
     let firstColor = 'Default';
     if (product.colors && product.colors.length > 0) {
       firstColor = typeof product.colors[0] === 'string' ? product.colors[0] : product.colors[0].name;
-    } else if ((product as any).variants && (product as any).variants.length > 0) {
-      firstColor = (product as any).variants[0].color;
     }
 
     addItem(product, firstSize, firstColor);
@@ -168,6 +161,33 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
   };
 
   const availableStock = (product.stock || 0) - (product.reservedStock || 0);
+
+  // Quantity Discount Badge Logic
+  const rule = quantityDiscounts.find(d => {
+    if (d.scope === 'product') {
+      const dProdId = typeof d.productId === 'object' ? d.productId?._id : d.productId;
+      return dProdId === productId;
+    }
+    if (d.scope === 'category') {
+      const dCatId = typeof d.categoryId === 'object' ? d.categoryId?._id : d.categoryId;
+      const pCatId = product.category?._id || product.category;
+      return dCatId === pCatId;
+    }
+    return false;
+  });
+
+  const motivationBadge = (() => {
+    if (!rule) return null;
+    const { applied } = calculateQuantityDiscounts(cartItems);
+    const isApplied = applied.some(a => a.rule._id === rule._id);
+    const benefit = rule.discountType === 'percentage' ? `${rule.value}% off` : `$${rule.value} off`;
+
+    return (
+      <div className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${isApplied ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-[#FFF0F5] text-[#D4537E] border border-[#F2C4D8]'}`}>
+        {isApplied ? `✓ ${benefit} aplicado` : `Llevá ${rule.minQuantity} y obtenés ${benefit}`}
+      </div>
+    );
+  })();
 
   return (
     <motion.article
@@ -195,30 +215,24 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Image Carousel Container */}
+          {/* Image Carousel */}
           <div
             className={`flex h-full w-full transition-transform duration-[450ms] ease-in-out ${availableStock <= 0 ? 'grayscale opacity-60' : ''}`}
             style={{ transform: `translateX(-${currentIndex * 100}%)` }}
           >
-            {images.map((img, index) => {
-              const validSrc = img?.startsWith('/') || img?.startsWith('http') || img?.startsWith('data:')
-                ? img
-                : '/placeholder.jpg';
-
-              return (
-                <div key={index} className="relative h-full w-full flex-shrink-0">
-                  <Image
-                    src={validSrc}
-                    alt={`${product.name} - Imagen ${index + 1}`}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    priority={index === 0}
-                    loading={index === 0 ? undefined : "lazy"}
-                  />
-                </div>
-              )
-            })}
+            {images.map((img, index) => (
+              <div key={index} className="relative h-full w-full flex-shrink-0">
+                <Image
+                  src={img?.startsWith('/') || img?.startsWith('http') ? img : '/placeholder.jpg'}
+                  alt={`${product.name} - ${index + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  priority={index === 0}
+                  loading={index === 0 ? undefined : "lazy"}
+                />
+              </div>
+            ))}
           </div>
 
           {/* Out of Stock Overlay */}
@@ -230,36 +244,16 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
             </div>
           )}
 
-          {/* Navigation Controls (Only if multiple images and in stock) */}
+          {/* Navigation Controls */}
           {hasMultipleImages && availableStock > 0 && (
             <>
-              {/* Arrows */}
               <div className="absolute inset-0 flex items-center justify-between px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                <button
-                  onClick={prevImage}
-                  className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-lumiere-charcoal shadow-soft hover:bg-white transition-colors"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button
-                  onClick={nextImage}
-                  className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-lumiere-charcoal shadow-soft hover:bg-white transition-colors"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
+                <button onClick={prevImage} className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-lumiere-charcoal shadow-soft hover:bg-white"><ChevronLeft className="h-5 w-5" /></button>
+                <button onClick={nextImage} className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-white/85 text-lumiere-charcoal shadow-soft hover:bg-white"><ChevronRight className="h-5 w-5" /></button>
               </div>
-
-              {/* Dots Indicator */}
               <div className="absolute bottom-16 left-0 right-0 flex justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 {images.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={(e) => goToImage(e, index)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === index
-                        ? "w-4 bg-lumiere-rose"
-                        : "w-1.5 bg-white/70 border border-white"
-                      }`}
-                  />
+                  <button key={index} onClick={(e) => { e.preventDefault(); e.stopPropagation(); goToImage(index); }} className={`h-1.5 rounded-full transition-all duration-300 ${currentIndex === index ? "w-4 bg-lumiere-rose" : "w-1.5 bg-white/70 border border-white"}`} />
                 ))}
               </div>
             </>
@@ -267,38 +261,9 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
 
           {/* Badges */}
           <div className="absolute left-3 top-3 flex flex-col gap-2 z-10" style={{ transform: "translateZ(40px)" }}>
-            {hasDiscount && availableStock > 0 && (
-              <Badge variant="sale">{discountLabel || "OFERTA"}</Badge>
-            )}
-            {product.isNew && availableStock > 0 && (
-              <Badge variant="new">Nuevo</Badge>
-            )}
+            {hasDiscount && availableStock > 0 && <Badge variant="sale">{discountLabel || "OFERTA"}</Badge>}
+            {product.isNew && availableStock > 0 && <Badge variant="new">Nuevo</Badge>}
           </div>
-
-          {/* Low Stock Badge */}
-          {availableStock > 0 && availableStock <= 5 && (
-            <div className="absolute left-3 bottom-16 z-30" style={{ transform: "translateZ(40px)" }}>
-              <span className="bg-orange-500 text-white px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-md">
-                Últimas {availableStock}
-              </span>
-            </div>
-          )}
-
-          {availableStock > 0 && (
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={handleWishlist}
-              className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-lumiere-light/80 backdrop-blur-md shadow-soft opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{ transform: "translateZ(40px)" }}
-            >
-              <motion.div animate={{ scale: inWishlist ? [1, 1.3, 1] : 1 }} transition={{ duration: 0.3 }}>
-                <Heart
-                  className={`h-5 w-5 ${inWishlist ? "fill-[#D4537E] text-[#D4537E]" : "text-lumiere-charcoal"}`}
-                />
-              </motion.div>
-            </motion.button>
-          )}
 
           {/* Add to Cart Overlay */}
           {availableStock > 0 && (
@@ -308,24 +273,24 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
               className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-500 z-10"
               style={{ transform: "translateZ(50px)" }}
             >
-              <Button
-                onClick={handleAddToCart}
-                variant="primary"
-                className="w-full shadow-glow bg-[#D4537E]"
-                size="sm"
-              >
-                <ShoppingBag className="mr-2 h-4 w-4" />
-                Agregar al carrito
+              <Button onClick={handleAddToCart} variant="primary" className="w-full shadow-glow bg-[#D4537E]" size="sm">
+                <ShoppingBag className="mr-2 h-4 w-4" /> Agregar al carrito
               </Button>
             </motion.div>
           )}
 
-          <div className="absolute inset-0 bg-gradient-to-t from-[#D4537E]/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10" />
-          <div className="absolute inset-0 bg-gradient-to-t from-lumiere-charcoal/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
+          {/* Wishlist Button */}
+          {availableStock > 0 && (
+            <motion.button onClick={handleWishlist} className="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-lumiere-light/80 backdrop-blur-md shadow-soft opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <motion.div animate={{ scale: inWishlist ? [1, 1.3, 1] : 1 }}>
+                <Heart className={`h-5 w-5 ${inWishlist ? "fill-[#D4537E] text-[#D4537E]" : "text-lumiere-charcoal"}`} />
+              </motion.div>
+            </motion.button>
+          )}
         </div>
 
-        <div className="mt-4 space-y-1" style={{ transform: "translateZ(30px)" }}>
+        <div className="mt-4 space-y-1.5" style={{ transform: "translateZ(30px)" }}>
+          {motivationBadge}
           <h3 className={`font-heading text-lg font-medium line-clamp-1 ${availableStock <= 0 ? 'text-lumiere-muted' : 'text-lumiere-charcoal'}`}>
             {product.name}
           </h3>
@@ -335,12 +300,8 @@ export const ProductCard = memo(({ product }: ProductCardProps) => {
                 <span className={`font-body font-bold ${availableStock <= 0 ? 'text-lumiere-muted' : 'text-[#D4537E]'}`}>
                   {formatPrice(discountedPrice)}
                 </span>
-                {/* Rule: only show crossed price if global discounts apply on top of product sale price or base price */}
-                {/* Actually, user said: "If only salePrice (no category/store discount): Show salePrice ONLY. If any discount applied on top (category or store): Show pre-discount price crossed out." */}
                 {calculateDiscountedPrice(product).hasGlobalDiscount && (
-                   <span className="text-sm text-lumiere-muted line-through">
-                    {formatPrice(originalPrice)}
-                  </span>
+                   <span className="text-sm text-lumiere-muted line-through">{formatPrice(originalPrice)}</span>
                 )}
               </>
             ) : (

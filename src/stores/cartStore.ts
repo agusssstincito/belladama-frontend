@@ -144,8 +144,8 @@ export const useCartStore = create<CartState>()(
 
       getQuantityDiscount: () => {
         const discountStore = useDiscountStore.getState();
-        const { totalDiscount } = discountStore.calculateQuantityDiscount(get().items);
-        return totalDiscount;
+        const { total } = discountStore.calculateQuantityDiscounts(get().items);
+        return total;
       },
 
       getFinalTotal: () => {
