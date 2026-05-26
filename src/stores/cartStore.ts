@@ -8,12 +8,13 @@ interface AppliedCoupon {
   type: 'percentage' | 'fixed';
   value: number;
   minCartTotal: number;
+  combinable?: boolean;
 }
 
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
-  appliedCoupon: AppliedCoupon | null;
+  appliedCoupons: AppliedCoupon[];
   addItem: (product: Product, size: string, color: string, quantity?: number) => void;
   removeItem: (productId: string, size: string, color: string) => void;
   updateQuantity: (productId: string, size: string, color: string, quantity: number) => void;
@@ -25,7 +26,7 @@ interface CartState {
   getTotalPrice: () => number;
   refreshPrices: () => void;
   applyCoupon: (coupon: AppliedCoupon) => void;
-  removeCoupon: () => void;
+  removeCoupon: (code: string) => void;
   getCouponDiscount: () => number;
   getQuantityDiscount: () => number;
   getFinalTotal: () => number;
@@ -36,13 +37,12 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       isOpen: false,
-      appliedCoupon: null,
+      appliedCoupons: [],
 
       addItem: (product, size, color, quantity = 1) => {
         const items = get().items;
         const productId = product.id || (product as any)._id;
         
-        // Calculate effective price using useDiscountStore logic
         const discountStore = useDiscountStore.getState();
         const { price: effectivePrice } = discountStore.calculateDiscountedPrice(product);
 
@@ -99,7 +99,7 @@ export const useCartStore = create<CartState>()(
         });
       },
 
-      clearCart: () => set({ items: [], appliedCoupon: null }),
+      clearCart: () => set({ items: [], appliedCoupons: [] }),
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
       toggleCart: () => set({ isOpen: !get().isOpen }),
@@ -125,21 +125,42 @@ export const useCartStore = create<CartState>()(
         set({ items: updatedItems });
       },
 
-      applyCoupon: (coupon) => set({ appliedCoupon: coupon }),
-      removeCoupon: () => set({ appliedCoupon: null }),
+      applyCoupon: (coupon) => {
+        const current = get().appliedCoupons;
+        // The controller already validates duplicates and combinable, 
+        // but we double check here just in case.
+        if (current.find(c => c.code === coupon.code)) return;
+        set({ appliedCoupons: [...current, coupon] });
+      },
+
+      removeCoupon: (code) => {
+        set({ 
+          appliedCoupons: get().appliedCoupons.filter(c => c.code !== code) 
+        });
+      },
 
       getCouponDiscount: () => {
         const subtotal = get().getTotalPrice();
-        const coupon = get().appliedCoupon;
+        const qtyDiscount = get().getQuantityDiscount();
+        // Base for coupons is subtotal after quantity discounts
+        const baseSubtotal = Math.max(0, subtotal - qtyDiscount);
         
-        if (!coupon) return 0;
-        if (coupon.minCartTotal && subtotal < coupon.minCartTotal) return 0;
+        const coupons = get().appliedCoupons;
+        if (coupons.length === 0) return 0;
         
-        if (coupon.type === 'percentage') {
-          return (subtotal * coupon.value) / 100;
-        } else {
-          return Math.min(coupon.value, subtotal);
-        }
+        // Simpler approach: all apply to the same base
+        let totalDiscount = 0;
+        coupons.forEach(coupon => {
+          if (coupon.minCartTotal && subtotal < coupon.minCartTotal) return;
+          
+          if (coupon.type === 'percentage') {
+            totalDiscount += (baseSubtotal * coupon.value) / 100;
+          } else {
+            totalDiscount += coupon.value;
+          }
+        });
+        
+        return Math.min(totalDiscount, baseSubtotal);
       },
 
       getQuantityDiscount: () => {

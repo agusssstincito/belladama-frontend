@@ -20,7 +20,7 @@ export function CartDrawer() {
     removeItem, 
     getTotalPrice, 
     getQuantityDiscount,
-    appliedCoupon, 
+    appliedCoupons, 
     applyCoupon, 
     removeCoupon, 
     getCouponDiscount,
@@ -37,7 +37,6 @@ export function CartDrawer() {
   const qtyDiscount = getQuantityDiscount();
   const couponDiscount = getCouponDiscount();
   const finalTotal = getFinalTotal();
-  const isCouponValid = !appliedCoupon || !appliedCoupon.minCartTotal || subtotal >= appliedCoupon.minCartTotal;
 
   const { applied, pending } = calculateQuantityDiscounts(items);
 
@@ -54,7 +53,11 @@ export function CartDrawer() {
     setCouponLoading(true);
     setCouponError("");
     try {
-      const res = await api.post("/coupons/validate", { code: couponInput.toUpperCase(), cartTotal: subtotal });
+      const res = await api.post("/coupons/validate", { 
+        code: couponInput.toUpperCase(), 
+        currentCoupons: appliedCoupons.map(c => c.code),
+        cartTotal: Math.max(0, subtotal - qtyDiscount)
+      });
       if (res.data.valid) {
         applyCoupon(res.data.data);
         setCouponInput("");
@@ -69,14 +72,12 @@ export function CartDrawer() {
   };
 
   const getItemMotivation = (item: any) => {
-    // If there is an applied discount for this specific item
     const isProductApplied = applied.some(a => 
       a.rule.scope === 'product' && 
       (a.rule.productId?._id || a.rule.productId) === (item.product.id || item.product._id)
     );
     if (isProductApplied) return { text: "✓ Descuento aplicado", color: "text-green-600" };
 
-    // Check if there is a pending discount for this product
     const productPending = pending.find(p => 
       p.rule.scope === 'product' && 
       (p.rule.productId?._id || p.rule.productId) === (item.product.id || item.product._id)
@@ -318,8 +319,8 @@ export function CartDrawer() {
                 </div>
               )}
 
-              {/* Coupon Section */}
-              {!appliedCoupon ? (
+              {/* Multi-Coupon Section */}
+              <div className="space-y-3">
                 <div className="flex gap-2">
                   <div className="relative flex-1">
                     <Tag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-lumiere-muted" />
@@ -340,42 +341,39 @@ export function CartDrawer() {
                     {couponLoading ? "..." : "Aplicar"}
                   </button>
                 </div>
-              ) : (
-                <div className={`rounded-xl border px-3 py-2 ${isCouponValid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {isCouponValid ? (
-                        <Check className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <Tag className="h-4 w-4 text-red-500" />
-                      )}
-                      <span className={`text-sm font-bold ${isCouponValid ? 'text-green-700' : 'text-red-700'}`}>
-                        {appliedCoupon.code}
-                      </span>
-                      {isCouponValid && (
-                        <span className="text-xs text-green-600 font-bold">
-                          −{formatPrice(couponDiscount)}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={removeCoupon}
-                      className="text-xs font-bold text-red-500 hover:text-red-700"
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                  {!isCouponValid && appliedCoupon.minCartTotal && (
-                    <p className="mt-1 text-[10px] text-red-600 font-medium">
-                      Faltan {formatPrice(appliedCoupon.minCartTotal - subtotal)} para aplicar este cupón
-                    </p>
-                  )}
-                </div>
-              )}
 
-              {couponError && (
-                <p className="text-xs text-red-500 font-medium px-1">{couponError}</p>
-              )}
+                {appliedCoupons.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {appliedCoupons.map((coupon) => {
+                      const baseSubtotal = Math.max(0, subtotal - qtyDiscount);
+                      const discountAmount = coupon.type === 'percentage' 
+                        ? (baseSubtotal * coupon.value) / 100 
+                        : coupon.value;
+                      const isValid = !coupon.minCartTotal || subtotal >= coupon.minCartTotal;
+
+                      return (
+                        <div 
+                          key={coupon.code} 
+                          className={`flex items-center gap-2 rounded-full px-3 py-1.5 border text-xs font-bold transition-all ${isValid ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}
+                        >
+                          <span>{coupon.code}</span>
+                          {isValid && <span>-{formatPrice(discountAmount)}</span>}
+                          <button 
+                            onClick={() => removeCoupon(coupon.code)}
+                            className="ml-1 hover:opacity-70"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {couponError && (
+                  <p className="text-xs text-red-500 font-medium px-1">{couponError}</p>
+                )}
+              </div>
 
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between text-sm text-lumiere-muted">
@@ -390,12 +388,19 @@ export function CartDrawer() {
                   </div>
                 )}
                 
-                {appliedCoupon && isCouponValid && (
-                  <div className="flex items-center justify-between text-sm text-green-600 font-medium">
-                    <span>Cupón {appliedCoupon.code}</span>
-                    <span>−{formatPrice(couponDiscount)}</span>
-                  </div>
-                )}
+                {appliedCoupons.map(coupon => {
+                  const baseSubtotal = Math.max(0, subtotal - qtyDiscount);
+                  const amount = coupon.type === 'percentage' ? (baseSubtotal * coupon.value) / 100 : coupon.value;
+                  const isValid = !coupon.minCartTotal || subtotal >= coupon.minCartTotal;
+                  if (!isValid) return null;
+
+                  return (
+                    <div key={coupon.code} className="flex items-center justify-between text-sm text-green-600 font-medium">
+                      <span>Cupón {coupon.code}</span>
+                      <span>−{formatPrice(amount)}</span>
+                    </div>
+                  );
+                })}
                 
                 <div className="flex items-center justify-between border-t border-lumiere-warm pt-3 mt-2">
                   <span className="font-bold text-lumiere-charcoal">Total</span>

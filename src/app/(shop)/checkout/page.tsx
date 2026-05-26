@@ -12,7 +12,7 @@ import type { CheckoutInput } from '@/lib/validations'
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, getTotalPrice, getQuantityDiscount, getCouponDiscount, clearCart, appliedCoupon } = useCartStore()
+  const { items, getTotalPrice, getQuantityDiscount, getCouponDiscount, clearCart, appliedCoupons } = useCartStore()
   const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
@@ -43,7 +43,11 @@ export default function CheckoutPage() {
           subtotal: item.price * item.quantity
         })),
         pricing: { subtotal, shipping: 0, discount: couponDiscount + qtyDiscount, total },
-        couponCode: appliedCoupon?.code || null,
+        appliedCoupons: appliedCoupons.map(c => {
+          const baseSubtotal = Math.max(0, subtotal - qtyDiscount);
+          const amount = c.type === 'percentage' ? (baseSubtotal * c.value) / 100 : c.value;
+          return { code: c.code, type: c.type, value: c.value, amount };
+        }),
       })
 
       // 2. Build WhatsApp message
@@ -62,16 +66,20 @@ export default function CheckoutPage() {
         ? `\n*Descuento por cantidad:* −$${qtyDiscount.toLocaleString('es-AR')}` 
         : ''
 
-      const couponLine = appliedCoupon 
-        ? `\n*Cupón:* ${appliedCoupon.code} → −$${couponDiscount.toLocaleString('es-AR')}` 
+      const baseSubtotal = Math.max(0, subtotal - qtyDiscount);
+      const couponLines = appliedCoupons.length > 0
+        ? `\n*Cupones aplicados:* ${appliedCoupons.map(c => {
+            const amount = c.type === 'percentage' ? (baseSubtotal * c.value) / 100 : c.value;
+            return `${c.code} (−$${amount.toLocaleString('es-AR')})`;
+          }).join(', ')}`
         : ''
 
       const message = `🛍️ *Nuevo pedido - Bella Dama*
-
+1. 
 *Productos:*
 ${productLines}
 
-*Subtotal:* $${subtotal.toLocaleString('es-AR')}${qtyDiscountLine}${couponLine}
+*Subtotal:* $${subtotal.toLocaleString('es-AR')}${qtyDiscountLine}${couponLines}
 *Total: $${total.toLocaleString('es-AR')}*
 
 *Cliente:* ${formData.name}
@@ -141,7 +149,7 @@ _El local se comunicará para coordinar la entrega._`
                 items={items}
                 subtotal={subtotal}
                 couponDiscount={couponDiscount}
-                couponCode={appliedCoupon?.code}
+                couponCode={appliedCoupons.map(c => c.code).join(', ')}
               />
             </div>
           </motion.div>
