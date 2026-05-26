@@ -48,10 +48,9 @@ function ProductsPageContent() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await api.get('/categories')
-      // El backend real devuelve { data: [...] }, el mock devuelve [...]
-      const categoriesData = response.data?.data || response.data
-      setCategories(Array.isArray(categoriesData) ? categoriesData : [])
+      const { cachedGet } = await import('@/lib/api')
+      const categoriesData = await cachedGet('/categories', 600) // 10 minutes
+      setCategories(Array.isArray(categoriesData?.data || categoriesData) ? (categoriesData?.data || categoriesData) : [])
     } catch (err) {
       console.error('Error fetching categories:', err)
     }
@@ -69,10 +68,9 @@ function ProductsPageContent() {
       params.append('page', page.toString());
       params.append('limit', '12');
 
-      console.log('Fetching products with params:', params.toString());
-      const response = await api.get(`/products?${params.toString()}`)
-      // Try to extract array from real API { data: { products: [] } } or mock { products: [] }
-      const productsData = response.data?.data?.products || response.data?.products || response.data;
+      const { cachedGet } = await import('@/lib/api')
+      const productsDataResponse = await cachedGet(`/products?${params.toString()}`, 60) // 1 minute
+      const productsData = productsDataResponse?.data?.products || productsDataResponse?.products || productsDataResponse;
       const newProducts = Array.isArray(productsData) ? productsData : [];
 
       if (page === 1) {
@@ -91,19 +89,23 @@ function ProductsPageContent() {
   }, [filters, page])
 
   useEffect(() => {
-    fetchCategories()
+    // Secondary data staggered by 300ms
+    const timer = setTimeout(() => {
+      fetchCategories()
+    }, 300)
+    return () => clearTimeout(timer)
   }, [fetchCategories])
 
   useEffect(() => {
     fetchProducts()
   }, [fetchProducts])
 
-  const handleFilterChange = (key: keyof Filters, value: string) => {
+  const handleFilterChange = useCallback((key: keyof Filters, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }))
     setPage(1)
-  }
+  }, [])
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       category: '',
       minPrice: '',
@@ -111,7 +113,7 @@ function ProductsPageContent() {
       sortBy: 'newest',
     })
     setPage(1)
-  }
+  }, [])
 
   return (
     <main className="min-h-screen bg-lumiere-cream">

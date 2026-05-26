@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useMotionValue, useTransform, useSpring } from "framer-motion";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Heart, ShoppingBag, ChevronLeft, ChevronRight } from "lucide-react";
@@ -20,14 +20,14 @@ interface ProductCardProps {
   product: Product;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export const ProductCard = memo(({ product }: ProductCardProps) => {
   const addItem = useCartStore((state) => state.addItem);
   const { toggleWishlist, isInWishlist } = useWishlistStore();
   const { user } = useAuthStore();
   const { showToast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
-  const { calculateDiscountedPrice, activeDiscounts } = useDiscountStore();
+  const { calculateDiscountedPrice } = useDiscountStore();
   const { price: discountedPrice, hasDiscount, originalPrice, discountLabel } = calculateDiscountedPrice(product);
 
   const productId = product._id || product.id;
@@ -214,6 +214,7 @@ export function ProductCard({ product }: ProductCardProps) {
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     priority={index === 0}
+                    loading={index === 0 ? undefined : "lazy"}
                   />
                 </div>
               )
@@ -352,4 +353,6 @@ export function ProductCard({ product }: ProductCardProps) {
       </Link>
     </motion.article>
   );
-}
+});
+
+ProductCard.displayName = "ProductCard";

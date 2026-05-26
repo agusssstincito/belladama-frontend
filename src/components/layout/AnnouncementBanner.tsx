@@ -19,9 +19,10 @@ export function AnnouncementBanner() {
   useEffect(() => {
     const fetchAnnouncement = async () => {
       try {
-        const response = await api.get("/announcements/active");
-        if (response.data.success && response.data.data) {
-          setAnnouncement(response.data.data);
+        const { cachedGet } = await import("@/lib/api");
+        const data = await cachedGet("/announcements/active", 120); // 2 minutes
+        if (data.success && data.data) {
+          setAnnouncement(data.data);
           setIsVisible(true);
         }
       } catch (error) {
@@ -29,7 +30,10 @@ export function AnnouncementBanner() {
       }
     };
 
-    fetchAnnouncement();
+    const timer = setTimeout(() => {
+      fetchAnnouncement();
+    }, 300);
+    return () => clearTimeout(timer);
   }, []);
 
   if (!isVisible || isDismissed || !announcement) return null;

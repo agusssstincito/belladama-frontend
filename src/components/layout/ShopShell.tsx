@@ -17,7 +17,10 @@ export function ShopShell({ children }: { children: React.ReactNode }) {
   const refreshPrices = useCartStore((state) => state.refreshPrices);
 
   useEffect(() => {
-    fetchActiveDiscounts();
+    const timer = setTimeout(() => {
+      fetchActiveDiscounts();
+    }, 300);
+    return () => clearTimeout(timer);
   }, [fetchActiveDiscounts]);
 
   useEffect(() => {
