@@ -187,7 +187,8 @@ export const useDiscountStore = create<DiscountState>((set, get) => ({
         if (discount.discountType === 'percentage') {
           discountAmount = (subtotalMatching * discount.value) / 100;
         } else {
-          discountAmount = discount.value;
+          // Fixed amount ($): apply ONCE to the affected subtotal, capped by the subtotal itself
+          discountAmount = Math.min(discount.value, subtotalMatching);
         }
         
         totalDiscount += discountAmount;
