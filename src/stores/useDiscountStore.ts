@@ -191,14 +191,16 @@ export const useDiscountStore = create<DiscountState>((set, get) => ({
         }
         
         totalDiscount += discountAmount;
+        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : formatPrice(discount.value) + ' off';
         appliedDiscounts.push({
-          label: `¡Descuento por cantidad aplicado! -${formatPrice(discountAmount)}`,
+          label: `✓ ${discountStr} aplicado en ${discount.scope === 'store' ? 'todo el carrito' : targetName}`,
           amount: discountAmount,
           discountId: discount._id
         });
       } else if (totalUnits > 0) {
+        const discountStr = discount.discountType === 'percentage' ? `${discount.value}% off` : formatPrice(discount.value) + ' off';
         pendingDiscounts.push({
-          label: `🛍️ ¡Agregá ${discount.minQuantity - totalUnits} más de ${targetName} y obtenés ${discount.discountType === 'percentage' ? `${discount.value}%` : formatPrice(discount.value)} off!`,
+          label: `Agregá ${discount.minQuantity - totalUnits} productos más ${discount.scope === 'store' ? '' : `de ${targetName} `}y obtenés ${discountStr}${discount.scope === 'store' ? ' en todo' : ''}`,
           needed: discount.minQuantity - totalUnits,
           discountId: discount._id,
           target: targetName,

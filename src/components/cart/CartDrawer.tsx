@@ -27,7 +27,7 @@ export function CartDrawer() {
     getFinalTotal, 
     refreshPrices 
   } = useCartStore();
-  const { fetchActiveDiscounts, calculateQuantityDiscount } = useDiscountStore();
+  const { fetchActiveDiscounts, calculateQuantityDiscount, quantityDiscounts } = useDiscountStore();
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState("");
@@ -214,42 +214,44 @@ export function CartDrawer() {
                 </div>
 
                 {/* Progressive Messages */}
-                {(appliedDiscounts.length > 0 || pendingDiscounts.length > 0) && (
-                  <div className="px-6 py-2 space-y-2">
-                    {appliedDiscounts.map((disc) => (
-                      <motion.div
-                        key={disc.discountId}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center justify-between rounded-xl bg-green-50 p-2.5 border border-green-100"
-                      >
-                        <div className="flex items-center gap-2 text-green-700 text-xs font-medium">
-                          <Check className="h-3.5 w-3.5" />
-                          <span>{disc.label}</span>
-                        </div>
-                      </motion.div>
-                    ))}
-                    
-                    {pendingDiscounts
-                      .filter(disc => !dismissedMessages.includes(disc.discountId))
-                      .map((disc) => (
-                      <motion.div
-                        key={disc.discountId}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center justify-between rounded-xl bg-[#FFF0F5] p-2.5 border border-[#D4537E]/10"
-                      >
-                        <div className="flex items-center gap-2 text-[#D4537E] text-xs font-medium">
-                          <span>{disc.label}</span>
-                        </div>
-                        <button 
-                          onClick={() => setDismissedMessages([...dismissedMessages, disc.discountId])}
-                          className="text-[#D4537E]/60 hover:text-[#D4537E]"
+                {quantityDiscounts.length > 0 && (
+                  <div className="px-6 py-2">
+                    <p className="text-[10px] text-lumiere-muted/60 uppercase font-bold tracking-wider mb-2">Descuentos que podés obtener:</p>
+                    <div className="space-y-2">
+                      {appliedDiscounts.map((disc) => (
+                        <motion.div
+                          key={disc.discountId}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex items-center justify-between rounded-full bg-green-50 px-4 py-1.5 border border-green-100"
                         >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </motion.div>
-                    ))}
+                          <div className="flex items-center gap-2 text-green-700 text-[11px] font-bold">
+                            <span>{disc.label}</span>
+                          </div>
+                        </motion.div>
+                      ))}
+                      
+                      {pendingDiscounts
+                        .filter(disc => !dismissedMessages.includes(disc.discountId))
+                        .map((disc) => (
+                        <motion.div
+                          key={disc.discountId}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="flex items-center justify-between rounded-full bg-[#FFF0F5] px-4 py-1.5 border border-[#D4537E]/10"
+                        >
+                          <div className="flex items-center gap-2 text-[#D4537E] text-[11px] font-bold">
+                            <span>{disc.label}</span>
+                          </div>
+                          <button 
+                            onClick={() => setDismissedMessages([...dismissedMessages, disc.discountId])}
+                            className="text-[#D4537E]/60 hover:text-[#D4537E] transition-colors"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
