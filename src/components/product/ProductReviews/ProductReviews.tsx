@@ -44,8 +44,9 @@ export default function ProductReviews({ productId, onStatsUpdate }: ProductRevi
 
   const fetchReviews = async () => {
     try {
-      const response = await api.get(`/reviews/${productId}`)
-      const { reviews, averageRating, totalCount } = response.data.data
+      const { cachedGet } = await import('@/lib/api')
+      const response = await cachedGet(`/reviews/${productId}`, 600) // 10 minutes
+      const { reviews, averageRating, totalCount } = response.data
       setReviews(reviews)
       setStats({ averageRating, totalCount })
       if (onStatsUpdate) {

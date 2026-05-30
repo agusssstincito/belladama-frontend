@@ -26,9 +26,10 @@ export function FeaturedCarousel() {
   useEffect(() => {
     const fetchFeatured = async () => {
       try {
-        const response = await api.get("/products?featured=true&limit=6");
+        const { cachedGet } = await import("@/lib/api");
+        const productsDataResponse = await cachedGet("/products?featured=true&limit=6", 120); // 2 minutes
         // Try to extract array from real API { data: { products: [] } } or mock { products: [] }
-        const productsData = response.data?.data?.products || response.data?.products || response.data;
+        const productsData = productsDataResponse?.data?.products || productsDataResponse?.products || productsDataResponse;
         setProducts(Array.isArray(productsData) ? productsData : []);
       } catch (error) {
         console.error("Error fetching featured products:", error);

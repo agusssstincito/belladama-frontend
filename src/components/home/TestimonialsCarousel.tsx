@@ -25,9 +25,10 @@ export function TestimonialsCarousel() {
   useEffect(() => {
     const fetchTestimonials = async () => {
       try {
-        const res = await api.get("/testimonials");
-        if (res.data.success) {
-          setTestimonials(res.data.data);
+        const { cachedGet } = await import("@/lib/api");
+        const data = await cachedGet("/testimonials", 600); // 10 minutes
+        if (data.success) {
+          setTestimonials(data.data);
         }
       } catch (error) {
         console.error("Error fetching testimonials:", error);

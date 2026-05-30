@@ -15,10 +15,10 @@ export function CategoryGrid() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await api.get('/categories');
-        const data = response.data?.data || response.data;
+        const { cachedGet } = await import("@/lib/api");
+        const data = await cachedGet('/categories', 600); // 10 minutes
         // Solo mostramos las categorías activas y ordenadas si el backend lo soporta
-        setCategories(Array.isArray(data) ? data : []);
+        setCategories(Array.isArray(data?.data || data) ? (data?.data || data) : []);
       } catch (error) {
         console.error('Error fetching categories:', error);
       } finally {

@@ -53,9 +53,9 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const response = await api.get(`/products?search=${query}&limit=5`);
-        const data = response.data.data || response.data;
-        setResults(data.products || []);
+        const { cachedGet } = await import("@/lib/api");
+        const data = await cachedGet(`/products?search=${query}&limit=5`, 60); // 1 minute
+        setResults(data.products || data.data?.products || data || []);
         setHasSearched(true);
       } catch (error) {
         console.error("Search error:", error);

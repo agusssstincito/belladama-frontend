@@ -65,11 +65,10 @@ export const useDiscountStore = create<DiscountState>((set, get) => ({
   fetchActiveDiscounts: async () => {
     set({ isLoading: true });
     try {
-      const { cachedGet } = await import("@/lib/api");
-      const [storeData, qtyData] = await Promise.all([
-        cachedGet("/store-discounts/active", 120), // 2 minutes
-        cachedGet("/quantity-discounts/active", 120) // 2 minutes
-      ]);
+      const { cachedGet, delay } = await import("@/lib/api");
+      const storeData = await cachedGet("/store-discounts/active", 180); // 3 minutes
+      await delay(200);
+      const qtyData = await cachedGet("/quantity-discounts/active", 180); // 3 minutes
       
       let storeDiscounts = [];
       let quantityDiscounts = [];

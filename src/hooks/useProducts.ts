@@ -38,8 +38,9 @@ export function useProducts(options: UseProductsOptions = {}) {
         if (options.page) params.append('page', options.page.toString())
         if (options.limit) params.append('limit', options.limit.toString())
 
-        const response = await api.get(`/products?${params.toString()}`)
-        setProducts(response.data.products || [])
+        const { cachedGet } = await import('@/lib/api')
+        const data = await cachedGet(`/products?${params.toString()}`, 120) // 2 minutes
+        setProducts(data.products || data.data?.products || data || [])
       } catch (err) {
         setError(err as Error)
       } finally {
@@ -62,8 +63,9 @@ export function useProduct(slug: string) {
     const fetchProduct = async () => {
       setIsLoading(true)
       try {
-        const response = await api.get(`/products/${slug}`)
-        setProduct(response.data)
+        const { cachedGet } = await import('@/lib/api')
+        const data = await cachedGet(`/products/${slug}`, 120) // 2 minutes
+        setProduct(data.data || data)
       } catch (err) {
         setError(err as Error)
       } finally {

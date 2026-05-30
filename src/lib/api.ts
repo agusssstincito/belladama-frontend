@@ -7,24 +7,39 @@ const api = axios.create({
 
 // In-memory cache
 const cache = new Map<string, { data: any, timestamp: number }>()
+const inFlight = new Map<string, Promise<any>>()
+
+export const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const cachedGet = async (url: string, ttlSeconds: number) => {
   const cached = cache.get(url)
   if (cached && Date.now() - cached.timestamp < ttlSeconds * 1000) {
     return cached.data
   }
-  try {
-    const response = await api.get(url)
-    cache.set(url, { data: response.data, timestamp: Date.now() })
-    return response.data
-  } catch (error: any) {
-    // If request fails (e.g. 429) and we have ANY cached version, return it as fallback
-    if (cached) {
-      console.warn(`API Error for ${url}, returning stale cache.`, error)
-      return cached.data
-    }
-    throw error
+
+  // Deduplicate in-flight requests
+  if (inFlight.has(url)) {
+    return inFlight.get(url)
   }
+
+  const promise = (async () => {
+    try {
+      const response = await api.get(url)
+      cache.set(url, { data: response.data, timestamp: Date.now() })
+      return response.data
+    } catch (error: any) {
+      if (cached) {
+        console.warn(`API Error for ${url}, returning stale cache.`, error)
+        return cached.data
+      }
+      throw error
+    } finally {
+      inFlight.delete(url)
+    }
+  })()
+
+  inFlight.set(url, promise)
+  return promise
 }
 
 api.interceptors.request.use((config) => {

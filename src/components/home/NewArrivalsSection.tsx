@@ -19,9 +19,10 @@ export function NewArrivalsSection() {
     const fetchNewArrivals = async () => {
       setIsLoading(true);
       try {
-        const response = await api.get(`/products?sortBy=newest&limit=8`);
+        const { cachedGet } = await import("@/lib/api");
+        const productsDataResponse = await cachedGet(`/products?sortBy=newest&limit=8`, 120); // 2 minutes
         // Try to extract array from real API { data: { products: [] } } or mock { products: [] }
-        const productsData = response.data?.data?.products || response.data?.products || response.data;
+        const productsData = productsDataResponse?.data?.products || productsDataResponse?.products || productsDataResponse;
         const data = Array.isArray(productsData) ? productsData : [];
         
         // Filter by creation date based on tab

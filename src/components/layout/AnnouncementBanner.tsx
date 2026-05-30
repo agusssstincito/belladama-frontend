@@ -20,7 +20,7 @@ export function AnnouncementBanner() {
     const fetchAnnouncement = async () => {
       try {
         const { cachedGet } = await import("@/lib/api");
-        const data = await cachedGet("/announcements/active", 120); // 2 minutes
+        const data = await cachedGet("/announcements/active", 180); // 3 minutes
         if (data.success && data.data) {
           setAnnouncement(data.data);
           setIsVisible(true);
@@ -32,7 +32,7 @@ export function AnnouncementBanner() {
 
     const timer = setTimeout(() => {
       fetchAnnouncement();
-    }, 300);
+    }, 800);
     return () => clearTimeout(timer);
   }, []);
 

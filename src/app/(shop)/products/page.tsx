@@ -69,7 +69,7 @@ function ProductsPageContent() {
       params.append('limit', '12');
 
       const { cachedGet } = await import('@/lib/api')
-      const productsDataResponse = await cachedGet(`/products?${params.toString()}`, 60) // 1 minute
+      const productsDataResponse = await cachedGet(`/products?${params.toString()}`, 120) // 2 minutes
       const productsData = productsDataResponse?.data?.products || productsDataResponse?.products || productsDataResponse;
       const newProducts = Array.isArray(productsData) ? productsData : [];
 
