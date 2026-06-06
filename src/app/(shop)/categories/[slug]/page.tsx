@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { fadeUp, staggerContainer } from '@/lib/animations'
 import api from '@/lib/api'
 import type { Product, Category } from '@/types'
+import { useCallback } from 'react'
 
 export default function CategoryPage({ params }: { params: { slug: string } }) {
   const [category, setCategory] = useState<Category | null>(null)
@@ -21,12 +22,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
 
-  useEffect(() => {
-    fetchCategory()
-    fetchProducts()
-  }, [params.slug, sortBy, page])
-
-  const fetchCategory = async () => {
+  const fetchCategory = useCallback(async () => {
     try {
       const response = await api.get(`/categories/${params.slug}`)
       // El backend real devuelve { success: true, data: category }
@@ -35,20 +31,20 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
     } catch (error) {
       console.error('Error fetching category:', error)
     }
-  }
+  }, [params.slug])
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setIsLoading(true)
     try {
       const params_url = new URLSearchParams()
       params_url.append('category', params.slug)
-      params_url.append('sortBy', sortBy)
+      params_url.append('sort', sortBy)
       params_url.append('page', page.toString())
       params_url.append('limit', '12')
 
-      const response = await api.get(`/products?${params_url.toString()}`)
-      // Try to extract array from real API { data: { products: [] } } or mock { products: [] }
-      const productsData = response.data?.data?.products || response.data?.products || response.data;
+      const { cachedGet } = await import('@/lib/api')
+      const productsDataResponse = await cachedGet(`/products?${params_url.toString()}`, 120)
+      const productsData = productsDataResponse?.data?.products || productsDataResponse?.products || productsDataResponse;
       const newProducts = Array.isArray(productsData) ? productsData : [];
 
       if (page === 1) {
@@ -63,7 +59,15 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [params.slug, sortBy, page])
+
+  useEffect(() => {
+    fetchCategory()
+  }, [fetchCategory])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [fetchProducts])
 
   return (
     <main className="min-h-screen bg-lumiere-cream">
