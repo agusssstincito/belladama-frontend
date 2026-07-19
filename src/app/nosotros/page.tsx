@@ -49,10 +49,6 @@ export default function NosotrosPage() {
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"
                 className="object-cover"
-                onError={(e) => {
-                  // Fallback if encoding issues
-                  (e.target as HTMLImageElement).src = "/CORRECTOR LAPIZ PINK 21 $2100 (1) 1-2-3-4-5-6-7-8.jpeg";
-                }}
               />
             </div>
           </div>
