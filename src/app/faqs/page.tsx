@@ -7,9 +7,12 @@ export const metadata: Metadata = {
 
 export default function FaqsPage() {
   const faqs = [
-    { q: "¿Cuáles son los métodos de pago?", a: "[Placeholder: Aceptamos transferencias, tarjetas de crédito y débito.]" },
-    { q: "¿Cuentan con envíos?", a: "Actualmente no realizamos envíos. Los pedidos se retiran en nuestro local coordinando previamente por WhatsApp." },
-    { q: "¿Cómo coordino el retiro?", a: "Una vez realizado el pedido por la web, el sistema te redirigirá a WhatsApp donde confirmaremos disponibilidad y coordinaremos el retiro." },
+    { q: "¿Cuáles son los métodos de pago?", a: "Aceptamos efectivo y MercadoPago. El pago se coordina por WhatsApp al momento de confirmar el pedido." },
+    { q: "¿Cuentan con envíos?", a: "Por el momento no realizamos envíos. Los pedidos se retiran personalmente coordinando por WhatsApp." },
+    { q: "¿Cómo coordino el retiro?", a: "Una vez hecho el pedido en la web, te redirigimos a WhatsApp donde confirmamos disponibilidad y acordamos el retiro." },
+    { q: "¿Los precios incluyen IVA?", a: "Sí, todos los precios publicados son finales." },
+    { q: "¿Puedo cambiar o devolver un producto?", a: "Si el producto llegó en mal estado o hubo un error en el pedido, escribinos por WhatsApp y lo resolvemos." },
+    { q: "¿Cómo sé si un producto está disponible?", a: "El stock se actualiza en tiempo real en la web. Si dice \"Sin stock\" podés escribirnos para consultar reposición." },
   ]
 
   return (
