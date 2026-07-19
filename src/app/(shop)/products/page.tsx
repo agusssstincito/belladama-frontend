@@ -35,6 +35,7 @@ function ProductsPageContent() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [totalProducts, setTotalProducts] = useState(0)
 
   useEffect(() => {
     const savedView = localStorage.getItem('viewMode') as 'grid' | 'list'
@@ -78,6 +79,9 @@ function ProductsPageContent() {
       } else {
         setProducts((prev) => [...prev, ...newProducts])
       }
+
+      const total = productsDataResponse?.data?.total ?? productsDataResponse?.total ?? newProducts.length;
+      setTotalProducts(total);
 
       setHasMore(newProducts.length === 12)
     } catch (err: unknown) {
@@ -212,7 +216,7 @@ function ProductsPageContent() {
           <div className="flex-1">
             <div className="flex items-center justify-between mb-6">
               <p className="text-lumiere-muted">
-                {Array.isArray(products) ? products.length : 0} producto{(Array.isArray(products) && products.length !== 1) ? 's' : ''} encontrado{(Array.isArray(products) && products.length !== 1) ? 's' : ''}
+                {totalProducts} producto{totalProducts !== 1 ? 's' : ''} encontrado{totalProducts !== 1 ? 's' : ''}
               </p>
               <div className="flex items-center gap-2">
                 <button

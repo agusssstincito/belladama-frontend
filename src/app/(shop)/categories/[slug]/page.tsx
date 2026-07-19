@@ -21,6 +21,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
   const [sortBy, setSortBy] = useState('newest')
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [totalProducts, setTotalProducts] = useState(0)
 
   const fetchCategory = useCallback(async () => {
     try {
@@ -52,6 +53,9 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
       } else {
         setProducts((prev) => [...prev, ...newProducts])
       }
+
+      const total = productsDataResponse?.data?.total ?? productsDataResponse?.total ?? newProducts.length;
+      setTotalProducts(total);
 
       setHasMore(newProducts.length === 12)
     } catch (error) {
@@ -103,7 +107,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <p className="text-lumiere-muted">
-            {Array.isArray(products) ? products.length : 0} producto{(Array.isArray(products) && products.length !== 1) ? 's' : ''} encontrado{(Array.isArray(products) && products.length !== 1) ? 's' : ''}
+            {totalProducts} producto{totalProducts !== 1 ? 's' : ''} encontrado{totalProducts !== 1 ? 's' : ''}
           </p>
 
           <div className="flex items-center gap-4">
